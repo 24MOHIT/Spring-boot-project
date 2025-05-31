@@ -25,6 +25,9 @@ public class UserDAO {
 
 	@Autowired
 	public RoleDAO roleDao;
+	
+	@Autowired
+	public AttachmentDAO attachmentDAO;
 
 	public void populate(UserDTO dto) {
 		RoleDTO roleDto = roleDao.findByPk(dto.getRoleId());

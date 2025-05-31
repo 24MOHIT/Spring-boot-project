@@ -2,6 +2,7 @@ package com.rays.ctl;
 
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,12 +12,18 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.rays.common.BaseCtl;
+import com.rays.common.DropDownList;
 import com.rays.common.ORSResponse;
+import com.rays.dto.AttachmentDTO;
 import com.rays.dto.UserDTO;
 import com.rays.form.UserForm;
+import com.rays.service.AttachmentService;
+import com.rays.service.RoleService;
 import com.rays.service.UserService;
 
 @RestController
@@ -25,6 +32,25 @@ public class UserCtl extends BaseCtl {
 
 	@Autowired
 	public UserService userService;
+	
+	@Autowired
+	public AttachmentService attachmentService;
+	
+	@Autowired
+	public RoleService roleService;
+	
+	@GetMapping("preload")
+	public ORSResponse preload() {
+		
+		ORSResponse res = new ORSResponse();
+		
+		List<DropDownList> roleList = roleService.search(null, 0, 0);
+		
+		res.addResult("roleList", roleList);
+		
+		return res;
+		
+	}
 
 	@PostMapping("save")
 	public ORSResponse save(@RequestBody @Valid UserForm form, BindingResult bindingResult) {
@@ -35,15 +61,7 @@ public class UserCtl extends BaseCtl {
 			return res;
 		}
 
-		UserDTO dto = new UserDTO();
-
-		dto.setId(form.getId());
-		dto.setFirstName(form.getFirstName());
-		dto.setLastName(form.getLastName());
-		dto.setLoginId(form.getLoginId());
-		dto.setPassword(form.getPassword());
-		dto.setDob(form.getDob());
-		dto.setRoleId(form.getRoleId());
+		UserDTO dto = (UserDTO) form.getDto();
 
 		if (dto.getId() != null && dto.getId() > 0) {
 			userService.update(dto);
@@ -99,5 +117,37 @@ public class UserCtl extends BaseCtl {
 			res.addData(list);
 		}
 		return res;
+	}
+	
+	@PostMapping("/profilePic/{userId}")
+	public ORSResponse uploadPic(@PathVariable Long userId, @RequestParam("file") MultipartFile file, HttpServletRequest req) {
+		
+		AttachmentDTO attachmentDTO = new AttachmentDTO(file);
+		
+		attachmentDTO.setDescription("profile pic");
+		
+		attachmentDTO.setUserId(userId);
+		
+		UserDTO userDTO = userService.findById(userId);
+		
+		if (userDTO.getImageId() != null && userDTO.getImageId() > 0) {
+			
+			attachmentDTO.setId(userDTO.getImageId());
+			
+		}
+		
+		Long imageId = attachmentService.save(attachmentDTO);
+		
+		if (userDTO.getImageId() == null) {
+			userDTO.setImageId(imageId);
+			userService.update(userDTO);
+		}
+		
+		ORSResponse res = new ORSResponse();
+		
+		res.addResult("imageId", imageId);
+		
+		return res;
+		
 	}
 }
